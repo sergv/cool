@@ -146,8 +146,8 @@ $ws    = [\ \n\f\r\t\v]
 <0> t@r@u@e             { \_ _ -> recordToken' $ BoolConst True }
 
 <0> [0-9]+              { \input len -> recordToken' $ IntConst $ retrieveToken input len}
-<0> [A-Z][A-Za-z0-9_]*  { \input len -> recordToken' $ TypeId $ retrieveToken input len }
-<0> [a-z][A-Za-z0-9_]*  { \input len -> recordToken' $ ObjectId $ retrieveToken input len }
+<0> [A-Z][A-Za-z0-9_]*  { \input len -> recordToken' $ TypeId $ TId $ retrieveToken input len }
+<0> [a-z][A-Za-z0-9_]*  { \input len -> recordToken' $ ObjectId $ Id $ retrieveToken input len }
 
 <0> "("                 { \_ _ -> recordToken' OpenParen }
 <0> ")"                 { \_ _ -> recordToken' CloseParen }

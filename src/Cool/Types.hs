@@ -14,7 +14,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Cool.Types
-  ( Id
+  ( Id(..)
+  , TId(..)
   , CoolString(..)
   )
 where
@@ -34,7 +35,11 @@ import Cool.Utils.Trie (Trie)
 import qualified Cool.Utils.Trie as TR
 
 
-type Id = Text
+newtype Id = Id { getId :: Text }
+           deriving (Show, Eq, Ord)
+
+newtype TId = TId { getTId :: Text }
+            deriving (Show, Eq, Ord)
 
 newtype CoolString = CoolString { getCoolString :: Text }
                    deriving (Show, Eq, Ord)

@@ -24,7 +24,7 @@ import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import Text.Read
 
-import Cool.Types (Id, CoolString(..))
+import Cool.Types (Id(..), TId(..), CoolString(..))
 import Cool.PhaseIO
 
 
@@ -82,7 +82,7 @@ data Tok = Class
          | BoolConst Bool
          | IntConst Text
          | StrConst CoolString
-         | TypeId Id
+         | TypeId TId
          | ObjectId Id
          | OpenParen
          | CloseParen
@@ -132,8 +132,8 @@ showTok Not            = "NOT"
 showTok (BoolConst b)  = "BOOL_CONST " <> (if b then "true" else "false")
 showTok (IntConst x)   = "INT_CONST " <> x
 showTok (StrConst str) = "STR_CONST \""  <> pipeShow (getCoolString str) <> "\""
-showTok (TypeId x)     = "TYPEID " <> x
-showTok (ObjectId x)   = "OBJECTID " <> x
+showTok (TypeId x)     = "TYPEID " <> getTId x
+showTok (ObjectId x)   = "OBJECTID " <> getId x
 showTok OpenParen      = "'('"
 showTok CloseParen     = "')'"
 showTok OpenBrace      = "'{'"
@@ -203,9 +203,9 @@ readTok xs
   | Just xs' <- T.stripPrefix "STR_CONST " xs =
     StrConst <$> pipeRead (stripQuotes xs')
   | Just xs' <- T.stripPrefix "TYPEID " xs =
-    Right $ TypeId xs'
+    Right $ TypeId $ TId xs'
   | Just xs' <- T.stripPrefix "OBJECTID " xs =
-    Right $ ObjectId xs'
+    Right $ ObjectId $ Id xs'
   | Just xs' <- T.stripPrefix "ERROR " xs =
     Error <$> pipeRead (stripQuotes xs')
   | otherwise = Left $ T.unpack $ "failed to read lexer Tok from " <> xs
