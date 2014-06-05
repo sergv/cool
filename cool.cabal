@@ -13,7 +13,8 @@ build-type:          Simple
 executable           lexer
   build-depends:     base, array,
                      text, wl-pprint-text,
-                     containers, template-haskell, semigroups, mtl
+                     containers, template-haskell, semigroups, mtl,
+                     uu-parsinglib
   hs-source-dirs:    src
   main-is:           Cool/Lexer/Main.hs
   other-modules:     Cool.Lexer.Lexer
@@ -36,7 +37,8 @@ executable           lexer
 executable           parser
   build-depends:     base, array,
                      text, wl-pprint-text,
-                     containers, template-haskell, semigroups, mtl
+                     containers, template-haskell, semigroups, mtl,
+                     uu-parsinglib
   hs-source-dirs:    src
   main-is:           Cool/Parser/Main.hs
   other-modules:     Cool.Parser.Parser

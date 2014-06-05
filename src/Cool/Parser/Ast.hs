@@ -39,6 +39,7 @@ import Cool.PhaseIO
 import Cool.Typecheck.Type
 import Cool.Types
 import Cool.Utils.RecursionSchemes
+import Cool.Utils.Text
 import Cool.Utils.Types
 
 data Program e = Program (NonEmpty (Class e))
@@ -121,7 +122,7 @@ instance (PipePretty e) => PipePretty (Class e) where
     text "_class" PP.<$>
     PP.indent indent (pipePretty className PP.<$>
                       text parent' PP.<$>
-                      text classFile PP.<$>
+                      text (addQuotes classFile) PP.<$>
                       text "(" PP.<$>
                       pipePretty features PP.<$>
                       text ")")
@@ -167,25 +168,39 @@ instance PipePretty TId where
   pipePretty = pipePretty . getTId
 
 instance PipePretty Text where
-  pipePretty = text
+  pipePretty = text . pipeShow -- needs quoting
+
+instance PipePretty Doc where
+  pipePretty = id
+
+instance PipePretty Bool where
+  pipePretty True  = text "1"
+  pipePretty False = text "0"
+
+instance PipePretty CoolString where
+  pipePretty = text . addQuotes . pipeShow . getCoolString
 
 instance PipePretty (ExprF Doc) where
   pipePretty = alg
     where
       alg :: ExprF Doc -> Doc
-      alg (Block x)        = one PP.<$> text "_block"  PP.<$> PP.indent indent x
-      alg (Add x y)        = one PP.<$> text "_plus"   PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Sub x y)        = one PP.<$> text "_sub"    PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Mul x y)        = one PP.<$> text "_mul"    PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Div x y)        = one PP.<$> text "_divide" PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Complement x)   = one PP.<$> text "_comp"   PP.<$> PP.indent indent (x)
-      alg (LessThan x y)   = one PP.<$> text "_lt"     PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Le x y)         = one PP.<$> text "_leq"    PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Eq x y)         = one PP.<$> text "_eq"     PP.<$> PP.indent indent (x PP.<$> y)
-      alg (Not x)          = one PP.<$> text "_neg"    PP.<$> PP.indent indent x
-      alg (Identifier x)   = one PP.<$> text "_object" PP.<$> PP.indent indent (pipePretty x)
-      alg (IntConst _ txt) = one PP.<$> text "_int"    PP.<$> PP.indent indent (pipePretty txt)
-      alg x = text $ "not implemented yet: " <> T.pack (show x)
+      alg (Block x)         = one PP.<$> text "_block"  PP.<$> PP.indent indent (pipePretty x)
+      alg (New t)           = one PP.<$> text "_new"    PP.<$> PP.indent indent (pipePretty t)
+      alg (IsVoid x)        = one PP.<$> text "_isvoid" PP.<$> PP.indent indent x
+      alg (Add x y)         = one PP.<$> text "_plus"   PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Sub x y)         = one PP.<$> text "_sub"    PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Mul x y)         = one PP.<$> text "_mul"    PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Div x y)         = one PP.<$> text "_divide" PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Complement x)    = one PP.<$> text "_comp"   PP.<$> PP.indent indent x
+      alg (LessThan x y)    = one PP.<$> text "_lt"     PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Le x y)          = one PP.<$> text "_leq"    PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Eq x y)          = one PP.<$> text "_eq"     PP.<$> PP.indent indent (x PP.<$> y)
+      alg (Not x)           = one PP.<$> text "_neg"    PP.<$> PP.indent indent x
+      alg (Identifier x)    = one PP.<$> text "_object" PP.<$> PP.indent indent (pipePretty x)
+      alg (IntConst _ txt)  = one PP.<$> text "_int"    PP.<$> PP.indent indent (pipePretty txt)
+      alg (StringConst str) = one PP.<$> text "_string" PP.<$> PP.indent indent (pipePretty str)
+      alg (BoolConst x)     = one PP.<$> text "_bool"   PP.<$> PP.indent indent (pipePretty x)
+      alg x                 = text $ "not implemented yet: " <> T.pack (show x)
 
 instance forall f. (PipePretty (f Doc)) => PipePretty ((OptionalTypeAnnotationF f) Doc) where
   pipePretty = alg
