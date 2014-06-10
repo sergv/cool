@@ -13,6 +13,7 @@
 
 module Cool.Utils.InvertibleSyntax.Operators
   ( Syntax(..)
+  , IndentedSyntax(..)
   , InvertibleSyntax(..)
   , (^$^)
   , (^*^)
