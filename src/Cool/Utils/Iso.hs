@@ -32,6 +32,10 @@ module Cool.Utils.Iso
   , (***)
   , associate
   , commute
+  , isoTuple3
+  , isoTuple4
+  , isoJust
+  , isoNothing
   , unit
   , element
   , subset
@@ -40,6 +44,7 @@ module Cool.Utils.Iso
   , subtract
   , pack
   , decimal
+  , nonEmptyToList
   )
 where
 
@@ -47,6 +52,7 @@ import Control.Applicative
 import Control.Category
 import Control.Monad
 import Data.Char
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -180,6 +186,32 @@ commute = Iso f g
     f (x, y) = Just (y, x)
     g (y, x) = Just (x, y)
 
+isoTuple3 :: Iso ((a, b), c) (a, b, c)
+isoTuple3 = Iso f g
+  where
+    f ((x, y), z) = Just (x, y, z)
+    g (x, y, z)   = Just ((x, y), z)
+
+isoTuple4 :: Iso ((a, b), (c, d)) (a, b, c, d)
+isoTuple4 = Iso f g
+  where
+    f ((x, y), (z, w)) = Just (x, y, z, w)
+    g (x, y, z, w)     = Just ((x, y), (z, w))
+
+isoJust :: Iso a (Maybe a)
+isoJust = Iso f g
+  where
+    f x        = Just $ Just x
+    g (Just x) = Just x
+    g Nothing  = Nothing
+
+isoNothing :: Iso () (Maybe a)
+isoNothing = Iso f g
+  where
+    f ()       = Just Nothing
+    g Nothing  = Just ()
+    g (Just _) = Nothing
+
 unit :: Iso a (a, ())
 unit = Iso f g
   where
@@ -217,3 +249,8 @@ decimal = Iso f g
     f = Just . show
     g = readMaybe
 
+nonEmptyToList :: Iso (NE.NonEmpty a) [a]
+nonEmptyToList = Iso (Just . NE.toList) g
+  where
+    g [] = Nothing
+    g xs = Just $ NE.fromList xs

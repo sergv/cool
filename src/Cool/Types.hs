@@ -17,6 +17,7 @@
 module Cool.Types
   ( Id(..)
   , TId(..)
+  , objectType
   , CoolString(..)
   )
 where
@@ -54,6 +55,9 @@ newtype TId = TId { getTId :: Text }
 
 deriveConstructorIsomorphisms ''TId
 
+objectType :: TId
+objectType = TId "Object"
+
 instance InvertibleSyntax TId where
   syntax = isoTId . Iso.pack . Iso.isoCons ^$^ (IS.upper ^*^ IS.many IS.alphaNumUnderscore)
 
@@ -67,14 +71,6 @@ deriveConstructorIsomorphisms ''CoolString
 
 instance InvertibleSyntax CoolString where
   syntax =
-    isoCoolString ^$^ between (char' '"')
-                              (char' '"')
-                              (Iso.inverse isoQuoted ^$^ syntax)
-
-
-
-instance PhaseIO CoolString where
-  pipeShow = addQuotes . pipeShow . getCoolString
-  pipeRead = (CoolString <$>) . pipeRead . stripQuotes
+    isoCoolString ^$^ doubleQuotes (Iso.inverse isoQuoted ^$^ syntax)
 
 

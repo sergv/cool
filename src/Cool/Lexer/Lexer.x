@@ -229,7 +229,7 @@ modifyCommentDepth f = do
 
 recordToken :: Tok -> Alex ()
 recordToken tok = do
-  line <- alexGetInput >>= return . alexLine
+  line <- liftM alexLine alexGetInput
   ust <- alexGetUserState
   alexSetUserState $ ust { tokens = Token line tok: tokens ust }
 

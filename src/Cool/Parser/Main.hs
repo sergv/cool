@@ -13,17 +13,18 @@
 
 module Cool.Parser.Main where
 
+import Control.Monad.Error
 import Control.Monad.Reader
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
 import qualified Data.Text.Lazy.IO as TIO
+import System.Exit
 import System.IO
 
 import Cool.Parser.Ast
 import Cool.Parser.Parser
 import Cool.Lexer.Token
 import Cool.PhaseIO
-
 
 main :: IO ()
 main = do
@@ -33,12 +34,16 @@ main = do
   either (error) f lexToks
   where
     f :: LexerTokens -> IO ()
-    f toks = TIO.putStrLn $
-             pipeShow $
-             fmap addTrivialTypeAnnotations $
-             flip runReader (getFile toks) $
-             parse $
-             getToks toks
+    f toks = do
+      case runReader (runErrorT (parse (getToks toks))) (getFile toks) of
+        Right expr ->
+          TIO.putStrLn $
+          pipeShow $
+          fmap addTrivialTypeAnnotations expr
+        Left err -> hPutStrLn stderr err >>
+                    hPutStrLn stderr "Compilation halted due to lex and parse errors" >>
+                    exitFailure
+
     getFile :: LexerTokens -> FilePath
     getFile (LexerTokens f _) = f
     getToks :: LexerTokens -> [Token]

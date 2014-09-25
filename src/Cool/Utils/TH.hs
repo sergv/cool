@@ -27,16 +27,16 @@ import qualified Cool.Utils.Iso as Iso
 
 -- requires type name
 deriveConstructorIsomorphisms :: Name -> Q [Dec]
-deriveConstructorIsomorphisms c = do
-  TyConI dataDef <- reify c
-  let (datatypeType, constructors) =
+deriveConstructorIsomorphisms typeName = do
+  TyConI dataDef <- reify typeName
+  let (datatypeType, tvars, constructors) =
         case dataDef of
           DataD _ctx typeName tvars cs _csNames ->
-            (mkDatatypeType typeName tvars, cs)
+            (mkDatatypeType typeName tvars, tvars, cs)
           NewtypeD _ctx typeName tvars c _ ->
-            (mkDatatypeType typeName tvars,  [c])
+            (mkDatatypeType typeName tvars, tvars, [c])
       conCount = length constructors
-  concat <$> mapM (constructIso conCount datatypeType) constructors
+  concat <$> mapM (constructIso conCount datatypeType tvars) constructors
   where
     mkDatatypeType :: Name -> [TyVarBndr] -> TypeQ
     mkDatatypeType typeName tvars =
@@ -50,8 +50,8 @@ deriveConstructorIsomorphisms c = do
     expandCon (NormalC name fieldTypes) = (name, map snd fieldTypes)
     expandCon (RecC name fieldTypes) = (name, map (\(_, _, t) ->t) fieldTypes)
 
-    constructIso :: Int -> TypeQ -> Con -> Q [Dec]
-    constructIso conCount datatypeType con = do
+    constructIso :: Int -> TypeQ -> [TyVarBndr] -> Con -> Q [Dec]
+    constructIso conCount datatypeType datatypeVars con = do
       let (name, fieldTypes) = expandCon con
       vs <- mapM (const $ newName "x") fieldTypes
       let isoName  = mkName $ "iso" ++ nameBase name
@@ -64,9 +64,11 @@ deriveConstructorIsomorphisms c = do
           projBody = tupE $ map varE vs
           injPat   = tupP $ map varP vs
           injBody  = foldl' appE (conE name) $ map varE vs
-      injName <- newName "inj"
+      injName  <- newName "inj"
       projName <- newName "proj"
-      sig <- sigD isoName [t| Iso $(projType) $(datatypeType) |]
+      sig <- sigD isoName $
+             forallT datatypeVars (cxt []) $
+             [t| Iso |] `appT` projType `appT` datatypeType -- [t| Iso $(projType) $(datatypeType) |]
       fun <- funD isoName
                   [ clause []
                            (normalB [e| Iso.mkIso $(varE injName) $(varE projName) |])
@@ -89,8 +91,5 @@ deriveConstructorIsomorphisms c = do
                            ]
                   ]
       return [sig, fun]
-
-
-
 
 

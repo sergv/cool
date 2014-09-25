@@ -1,8 +1,10 @@
 {
 module Cool.Parser.Parser where
 
+import Control.Monad.Error
 import Control.Monad.Reader
 import Data.List.NonEmpty
+import Data.Maybe
 import Data.Monoid
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -10,6 +12,8 @@ import qualified Data.Text.Lazy as T
 import Cool.Types
 import qualified Cool.Lexer.Token as Lex
 import Cool.Parser.Ast
+import qualified Cool.Utils.InvertibleSyntax as IS
+import Cool.Utils.InvertibleSyntax.Printer
 import Cool.Utils.RecursionSchemes
 
 }
@@ -17,7 +21,7 @@ import Cool.Utils.RecursionSchemes
 
 %name parse
 %tokentype { Lex.Token }
-%monad { Reader FilePath } { (>>=) } { return }
+%monad { ErrorT String (Reader FilePath) } { (>>=) } { return }
 
 %token CLASS      { Lex.Token _ Lex.Class }
        ELSE       { Lex.Token _ Lex.Else }
@@ -85,9 +89,9 @@ classes         :: { [Class Expr] }
 class           :: { Class Expr }
                 : CLASS TYPEID opt_parent '{' features '}' {% asks T.pack >>= \file -> return (Class $2 $3 $5 file) }
 
-opt_parent      :: { Maybe TId }
-                : INHERITS TYPEID { Just $2 }
-                | {- empty -}     { Nothing }
+opt_parent      :: { TId }
+                : INHERITS TYPEID { $2 }
+                | {- empty -}     { objectType }
 
 features        :: { [Feature Expr] }
                 : feature ';' features { $1: $3 }
@@ -120,9 +124,9 @@ stmt            :: { Expr }
                 | CASE expr OF case_entry case_body ESAC          { Fix $ Case $2 ($4 :| $5) }
                 | expr                                            { $1 }
 
-
 expr            :: { Expr }
                 : ISVOID expr1                                    { Fix $ IsVoid $2 }
+                | OBJECTID ASSIGN expr1                           { Fix $ Assign $1 $3 }
                 | expr1                                           { $1 }
 
 expr1           :: { Expr }
@@ -170,8 +174,12 @@ case_body       :: { [(Id, TId, Expr)] }
 
 {
 
-happyError :: [Lex.Token] -> a
-happyError toks = error $ "failed" <> show toks
+happyError :: [Lex.Token] -> ErrorT String (Reader FilePath) a --(Program Expr)
+happyError (Lex.Token line tok:_) = do
+  fname <- ask
+  throwError $ "\"" ++ fname ++ "\", line " ++ (show $ 1 + Lex.getLine line) ++
+               ": syntax error at or near " ++ T.unpack (fromJust $ pprint IS.syntax tok)
+happyError toks = throwError $ "failed " <> show toks
 
 }
 

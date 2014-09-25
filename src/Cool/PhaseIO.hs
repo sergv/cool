@@ -14,14 +14,19 @@
 -- Module defining functions for pipe communication across
 -- different stages of pipeline
 
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Cool.PhaseIO
   ( PhaseIO(..)
   , Quoted
   , getQuoted
   , isoQuoted
+  -- TODO remove escape from export list
+  , escape
   )
 where
 
@@ -29,6 +34,7 @@ import Control.Applicative
 import Control.Category
 import Data.Map (Map)
 import qualified Data.Map as M
+import Data.Maybe
 import Data.Monoid
 import Data.Text.Lazy (Text)
 import qualified Data.Text.Lazy as T
@@ -38,6 +44,8 @@ import Text.Read
 import qualified Cool.Utils.InvertibleSyntax as IS
 import Cool.Utils.InvertibleSyntax.Operators
 import Cool.Utils.InvertibleSyntax.Combinators
+import qualified Cool.Utils.InvertibleSyntax.UUParser as Parser
+import qualified Cool.Utils.InvertibleSyntax.Printer as Printer
 import Cool.Utils.Iso (Iso)
 import qualified Cool.Utils.Iso as Iso
 import Cool.Utils.TH
@@ -50,6 +58,11 @@ import Prelude hiding ((.))
 class PhaseIO a where
   pipeShow :: a -> Text
   pipeRead :: Text -> Either String a
+
+
+instance (InvertibleSyntax a) => PhaseIO a where
+  pipeShow x = fromMaybe (error "Printing failed") $ Printer.pprint syntax x
+  pipeRead x = Parser.parse syntax x
 
 instance PhaseIO Integer where
   pipeShow = T.pack . show
@@ -65,9 +78,8 @@ instance InvertibleSyntax Quoted where
   syntax = isoQuotedText . Iso.pack ^$^ string
 
 isoQuoted :: Iso Text Quoted
-isoQuoted = -- isoQuoted .
-            Iso.mkIso (Just . QuotedText . escape) (Just . unescape . getQuoted)
---  where
+isoQuoted = Iso.mkIso (Just . QuotedText . escape) (Just . unescape . getQuoted)
+
 escape :: Text -> Text
 escape = T.foldr encodeEscapedChar T.empty
 
@@ -126,7 +138,6 @@ charsToEscape = M.fromList [ ('"',   "\\\"")
 decodeSequences :: Trie Char Char
 decodeSequences =
   TR.fromList $ map (\(c, txt) -> (T.unpack txt, c)) $ M.toList charsToEscape
-
 
 instance PhaseIO Text where
   pipeShow = escape

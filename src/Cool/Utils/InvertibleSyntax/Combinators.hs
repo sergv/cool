@@ -13,9 +13,12 @@
 
 module Cool.Utils.InvertibleSyntax.Combinators
   ( many
+  , many1
+  , manyDelim1
   , alpha
   , upper
   , lower
+  , newline
   , alphaNumUnderscore
   , digit
   , integer
@@ -26,6 +29,7 @@ module Cool.Utils.InvertibleSyntax.Combinators
   , string
   , between
   , parens
+  , doubleQuotes
   , chainl1
   )
 where

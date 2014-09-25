@@ -2,12 +2,18 @@
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE UndecidableInstances #-}
+
 module Cool.Utils.InvertibleSyntax where
 
 import qualified Control.Applicative as A
 import Control.Category
 import Control.Monad
 import Data.Char
+import qualified Data.List.NonEmpty as NE
 import Data.Maybe
 import Data.Monoid
 import Data.Text.Lazy (Text)
@@ -61,7 +67,14 @@ class (Syntax s) => IndentedSyntax s where
   indentation :: s ()
 
 class InvertibleSyntax a where
-  syntax :: (Syntax s) => s a
+  syntax :: (IndentedSyntax s) => s a
+
+many1 :: (Syntax s) => s a -> s (NE.NonEmpty a)
+many1 s = Iso.inverse Iso.nonEmptyToList . Iso.isoCons ^$^ s ^*^ many s
+
+manyDelim1 :: (Syntax s) => s () -> s a -> s (NE.NonEmpty a)
+manyDelim1 delim s =
+  Iso.inverse Iso.nonEmptyToList . Iso.isoCons ^$^ s ^*^ many (delim *^ s)
 
 many :: (Syntax s) => s a -> s [a]
 many s =
@@ -78,6 +91,9 @@ upper = Iso.subset isUpper ^$^ token
 
 lower :: (Syntax s) => s Char
 lower = Iso.subset isLower ^$^ token
+
+newline :: (Syntax s) => s ()
+newline = char' '\n'
 
 alphaNumUnderscore :: (Syntax s) => s Char
 alphaNumUnderscore = Iso.subset f ^$^ token
@@ -120,8 +136,8 @@ string = pure [] ^|^
          Iso.isoCons ^$^ char '\\' ^*^ (Iso.isoCons ^$^ char '"' ^*^ string)
   -- many (Iso.subset (/= '"') ^$^ token ^|^ char' '\\' *^ char '"')
 
-infixl 5 *^
-infixl 5 ^*
+infixl 6 *^
+infixl 6 ^*
 
 (*^) :: (Syntax s) => s () -> s a -> s a
 (*^) p q = Iso.inverse Iso.unit . Iso.commute ^$^ p ^*^ q
@@ -134,6 +150,9 @@ between p q r = p *^ r ^* q
 
 parens :: (Syntax s) => s a -> s a
 parens = between (char' '(') (char' ')')
+
+doubleQuotes :: (Syntax s) => s a -> s a
+doubleQuotes = between (char' '"') (char' '"')
 
 chainl1 :: (Syntax s) => s a -> s b -> Iso (a, (b, a)) a -> s a
 chainl1 arg op f = Iso.foldl f ^$^ arg ^*^ many (op ^*^ arg)
@@ -151,5 +170,24 @@ instance (Functor f) => IsoFunctor f where
 instance (Contravariant f) => IsoFunctor f where
   (^$^) (Iso _ g) = contramap g
 -}
+
+-- experiment in trying to define invertible syntax for unfixed
+-- functor
+-- data ListF a f = Nil
+--                | ConsF a f
+--                deriving (Show, Eq, Ord, Functor)
+--
+-- newtype Fix f = Fix { unFix :: f (Fix f) }
+--
+-- deriving instance (Show (f (Fix f))) => Show (Fix f)
+-- deriving instance (Eq (f (Fix f))) => Eq (Fix f)
+-- deriving instance (Ord (f (Fix f))) => Ord (Fix f)
+
+-- want both algebra and coalgebra at the same time
+-- ListF Int String -> String
+-- String -> ListF Int String
+--
+-- (Syntax s) => ListF Int (s a) -> s a
+-- (Syntax s) => s a -> ListF Int (s a)
 
 

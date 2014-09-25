@@ -12,11 +12,17 @@
 ----------------------------------------------------------------------------
 
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Cool.Utils.RecursionSchemes where
 
+import Cool.Utils.TH
+
 newtype Fix f = Fix { unFix :: f (Fix f) }
+
+deriveConstructorIsomorphisms ''Fix
 
 deriving instance (Show (f (Fix f))) => Show (Fix f)
 deriving instance (Eq (f (Fix f))) => Eq (Fix f)
